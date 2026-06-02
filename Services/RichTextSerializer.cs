@@ -1,0 +1,70 @@
+using System.IO;
+using System.Windows;
+using System.Windows.Documents;
+using System.Windows.Media;
+using MediaBrush = System.Windows.Media.Brush;
+
+namespace DesktopTextBoard.Services;
+
+public static class RichTextSerializer
+{
+    public static string Save(FlowDocument document)
+    {
+        var range = new TextRange(document.ContentStart, document.ContentEnd);
+        using var stream = new MemoryStream();
+        range.Save(stream, DataFormats.XamlPackage);
+        return Convert.ToBase64String(stream.ToArray());
+    }
+
+    public static FlowDocument Load(string content, MediaBrush foreground, double fontSize)
+    {
+        var document = CreateEmpty(foreground, fontSize);
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return document;
+        }
+
+        try
+        {
+            var bytes = Convert.FromBase64String(content);
+            using var stream = new MemoryStream(bytes);
+            var range = new TextRange(document.ContentStart, document.ContentEnd);
+            range.Load(stream, DataFormats.XamlPackage);
+        }
+        catch
+        {
+            document = CreateEmpty(foreground, fontSize);
+            document.Blocks.Clear();
+            document.Blocks.Add(new Paragraph(new Run(content)));
+        }
+
+        ApplyDefaults(document, foreground, fontSize);
+        return document;
+    }
+
+    public static FlowDocument Clone(FlowDocument document, MediaBrush foreground, double fontSize)
+    {
+        return Load(Save(document), foreground, fontSize);
+    }
+
+    private static FlowDocument CreateEmpty(MediaBrush foreground, double fontSize)
+    {
+        var document = new FlowDocument
+        {
+            PagePadding = new Thickness(0),
+            Background = Brushes.Transparent,
+            Foreground = foreground,
+            FontSize = fontSize
+        };
+        document.Blocks.Add(new Paragraph());
+        return document;
+    }
+
+    private static void ApplyDefaults(FlowDocument document, MediaBrush foreground, double fontSize)
+    {
+        document.PagePadding = new Thickness(0);
+        document.Background = Brushes.Transparent;
+        document.Foreground = foreground;
+        document.FontSize = fontSize;
+    }
+}

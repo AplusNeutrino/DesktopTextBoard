@@ -1,0 +1,23 @@
+# Build output
+bin/
+obj/
+
+# Local SDK downloaded for this workspace
+.dotnet/
+dotnet-install.ps1
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.rsuser
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Local app data backups should not live in the repo
+boards.json
+boards-error-*.json
