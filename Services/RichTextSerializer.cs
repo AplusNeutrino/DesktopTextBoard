@@ -8,7 +8,7 @@ namespace DesktopTextBoard.Services;
 
 public static class RichTextSerializer
 {
-    private const double CompactListLeftMargin = -52;
+    private const double CompactListLeftMargin = 0;
     private const double CompactListMarkerGap = 0;
 
     public static string Save(FlowDocument document)
@@ -56,6 +56,16 @@ public static class RichTextSerializer
         NormalizeBlocks(document.Blocks);
     }
 
+    public static void ToggleCompactBullets(FlowDocument document, TextSelection selection)
+    {
+        InsertCompactPrefix(document, selection, "• ");
+    }
+
+    public static void ToggleCompactNumbering(FlowDocument document, TextSelection selection)
+    {
+        InsertCompactPrefix(document, selection, "1. ");
+    }
+
     private static FlowDocument CreateEmpty(MediaBrush foreground, double fontSize)
     {
         var document = new FlowDocument
@@ -80,7 +90,7 @@ public static class RichTextSerializer
 
     private static void NormalizeBlocks(BlockCollection blocks)
     {
-        foreach (var block in blocks)
+        foreach (var block in blocks.ToList())
         {
             switch (block)
             {
@@ -88,12 +98,7 @@ public static class RichTextSerializer
                     paragraph.Margin = new Thickness(0, 0, 0, 4);
                     break;
                 case List list:
-                    list.Margin = new Thickness(CompactListLeftMargin, 0, 0, 4);
-                    list.MarkerOffset = CompactListMarkerGap;
-                    foreach (var item in list.ListItems)
-                    {
-                        NormalizeBlocks(item.Blocks);
-                    }
+                    ReplaceListWithCompactParagraphs(blocks, list);
                     break;
                 case Section section:
                     section.Margin = new Thickness(0);
@@ -101,5 +106,49 @@ public static class RichTextSerializer
                     break;
             }
         }
+    }
+
+    private static void ReplaceListWithCompactParagraphs(BlockCollection parentBlocks, List list)
+    {
+        var index = list.StartIndex <= 0 ? 1 : list.StartIndex;
+        var useNumbers = list.MarkerStyle is TextMarkerStyle.Decimal
+            or TextMarkerStyle.LowerLatin
+            or TextMarkerStyle.UpperLatin
+            or TextMarkerStyle.LowerRoman
+            or TextMarkerStyle.UpperRoman;
+
+        foreach (var item in list.ListItems.ToList())
+        {
+            var text = new TextRange(item.ContentStart, item.ContentEnd).Text.Trim();
+            var prefix = useNumbers ? $"{index}. " : "• ";
+            var paragraph = new Paragraph(new Run($"{prefix}{text}"))
+            {
+                Margin = new Thickness(0, 0, 0, 4)
+            };
+            parentBlocks.InsertBefore(list, paragraph);
+            index++;
+        }
+
+        parentBlocks.Remove(list);
+    }
+
+    private static void InsertCompactPrefix(FlowDocument document, TextSelection selection, string prefix)
+    {
+        var paragraph = selection.Start.Paragraph;
+        if (paragraph is null)
+        {
+            document.Blocks.Add(new Paragraph(new Run(prefix)));
+            return;
+        }
+
+        var lineRange = new TextRange(paragraph.ContentStart, paragraph.ContentEnd);
+        var text = lineRange.Text.TrimStart();
+        if (text.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        paragraph.Inlines.InsertBefore(paragraph.Inlines.FirstInline, new Run(prefix));
+        paragraph.Margin = new Thickness(0, 0, 0, 4);
     }
 }

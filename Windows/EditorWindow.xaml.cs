@@ -490,8 +490,27 @@ public partial class EditorWindow : Window
     private void BoldButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.ToggleBold);
     private void ItalicButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.ToggleItalic);
     private void UnderlineButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.ToggleUnderline);
-    private void BulletsButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.ToggleBullets);
-    private void NumbersButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.ToggleNumbering);
+    private void BulletsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeEditor is null)
+        {
+            return;
+        }
+
+        RichTextSerializer.ToggleCompactBullets(_activeEditor.Document, _activeEditor.Selection);
+        SaveActiveEditor();
+    }
+
+    private void NumbersButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeEditor is null)
+        {
+            return;
+        }
+
+        RichTextSerializer.ToggleCompactNumbering(_activeEditor.Document, _activeEditor.Selection);
+        SaveActiveEditor();
+    }
     private void AlignLeftButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.AlignLeft);
     private void AlignCenterButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.AlignCenter);
     private void AlignRightButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.AlignRight);
