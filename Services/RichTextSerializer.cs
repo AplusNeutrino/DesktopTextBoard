@@ -11,6 +11,10 @@ public static class RichTextSerializer
 {
     private const double CompactListLeftMargin = 0;
     private const double CompactListMarkerGap = 0;
+    private const string HiddenDividerToken = "[[DTB_DIVIDER]]";
+    private const string LegacyDividerText = "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500";
+    private const string HeavyDividerText = "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501";
+    private const string VisibleDividerText = "------------------------";
 
     public static string Save(FlowDocument document)
     {
@@ -153,10 +157,21 @@ public static class RichTextSerializer
             switch (block)
             {
                 case Paragraph paragraph:
-                    paragraph.Margin = new Thickness(0, 0, 0, 4);
+                    if (IsDividerParagraph(paragraph))
+                    {
+                        ApplyDividerStyle(paragraph);
+                    }
+                    else
+                    {
+                        paragraph.Margin = new Thickness(0, 0, 0, 4);
+                    }
                     break;
                 case List list:
                     ReplaceListWithCompactParagraphs(blocks, list);
+                    break;
+                case BlockUIContainer container when IsLegacyDividerContainer(container):
+                    blocks.InsertBefore(container, CreateDividerBlock());
+                    blocks.Remove(container);
                     break;
                 case Section section:
                     section.Margin = new Thickness(0);
@@ -258,17 +273,17 @@ public static class RichTextSerializer
         MoveSelectionToParagraphEnd(selection, next);
     }
 
-    private static BlockUIContainer CreateDividerBlock()
+    private static Paragraph CreateDividerBlock()
     {
-        return new BlockUIContainer(new Border
+        var paragraph = new Paragraph(new Run(VisibleDividerText))
         {
-            Height = 1,
-            Background = new SolidColorBrush(Color.FromArgb(120, 170, 176, 184)),
-            Margin = new Thickness(0, 2, 0, 2)
-        })
-        {
-            Margin = new Thickness(0, 2, 0, 3)
+            Margin = new Thickness(0, 1, 0, 2),
+            Padding = new Thickness(0),
+            FontSize = 8,
+            LineHeight = 8,
+            Foreground = new SolidColorBrush(Color.FromRgb(190, 196, 205))
         };
+        return paragraph;
     }
 
     private static Paragraph CreateEmptyParagraph()
@@ -277,6 +292,38 @@ public static class RichTextSerializer
         {
             Margin = new Thickness(0, 0, 0, 4)
         };
+    }
+
+    private static bool IsDividerParagraph(Paragraph paragraph)
+    {
+        var text = new TextRange(paragraph.ContentStart, paragraph.ContentEnd)
+            .Text
+            .Trim();
+        return text == HiddenDividerToken
+            || text == LegacyDividerText
+            || text == HeavyDividerText
+            || text == VisibleDividerText;
+    }
+
+    private static bool IsLegacyDividerContainer(BlockUIContainer container)
+    {
+        return container.Child is Border border
+            && border.Height <= 2
+            && border.Margin.Top <= 3
+            && border.Margin.Bottom <= 3;
+    }
+
+    private static void ApplyDividerStyle(Paragraph paragraph)
+    {
+        paragraph.Inlines.Clear();
+        paragraph.Inlines.Add(new Run(VisibleDividerText));
+        paragraph.Margin = new Thickness(0, 1, 0, 2);
+        paragraph.Padding = new Thickness(0);
+        paragraph.FontSize = 8;
+        paragraph.LineHeight = 8;
+        paragraph.Foreground = new SolidColorBrush(Color.FromRgb(190, 196, 205));
+        paragraph.BorderThickness = new Thickness(0);
+        paragraph.BorderBrush = Brushes.Transparent;
     }
 
     private static void MoveSelectionToParagraphEnd(TextSelection selection, Paragraph paragraph)
