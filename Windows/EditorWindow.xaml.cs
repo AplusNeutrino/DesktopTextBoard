@@ -28,6 +28,7 @@ public partial class EditorWindow : Window
         _boardStore = boardStore;
         _widgetManager = widgetManager;
         _monitors = MonitorService.GetMonitors().ToList();
+        SourceInitialized += (_, _) => NativeMethods.UseImmersiveDarkMode(this);
 
         InitializeToolbar();
         InitializeSettingsLists();
