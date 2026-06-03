@@ -209,8 +209,25 @@ public partial class EditorWindow : Window
             AcceptsTab = true
         };
         editor.GotKeyboardFocus += (_, _) => _activeEditor = editor;
+        editor.PreviewKeyDown += Editor_PreviewKeyDown;
         editor.TextChanged += Editor_TextChanged;
         return editor;
+    }
+
+    private void Editor_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || sender is not WpfRichTextBox editor)
+        {
+            return;
+        }
+
+        if (!RichTextSerializer.HandleCompactListEnter(editor.Selection))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        SaveActiveEditor();
     }
 
     private void AddGridSplitters(WidgetConfig widget)

@@ -66,6 +66,29 @@ public static class RichTextSerializer
         InsertCompactPrefix(document, selection, "1. ");
     }
 
+    public static bool HandleCompactListEnter(TextSelection selection)
+    {
+        var paragraph = selection.Start.Paragraph;
+        if (paragraph is null)
+        {
+            return false;
+        }
+
+        var text = new TextRange(paragraph.ContentStart, paragraph.ContentEnd).Text.TrimEnd('\r', '\n');
+        if (text.StartsWith("• ", StringComparison.Ordinal))
+        {
+            return ContinueBulletList(selection, paragraph, text);
+        }
+
+        var numberPrefix = GetNumberPrefix(text);
+        if (numberPrefix is not null)
+        {
+            return ContinueNumberedList(selection, paragraph, text, numberPrefix.Value.Number, numberPrefix.Value.PrefixLength);
+        }
+
+        return false;
+    }
+
     private static FlowDocument CreateEmpty(MediaBrush foreground, double fontSize)
     {
         var document = new FlowDocument
@@ -158,5 +181,79 @@ public static class RichTextSerializer
             paragraph.Inlines.InsertBefore(paragraph.Inlines.FirstInline, prefixRun);
         }
         paragraph.Margin = new Thickness(0, 0, 0, 4);
+    }
+
+    private static bool ContinueBulletList(TextSelection selection, Paragraph paragraph, string text)
+    {
+        if (text.Trim() == "•")
+        {
+            paragraph.Inlines.Clear();
+            return true;
+        }
+
+        InsertParagraphAfter(selection, paragraph, "• ");
+        return true;
+    }
+
+    private static bool ContinueNumberedList(TextSelection selection, Paragraph paragraph, string text, int number, int prefixLength)
+    {
+        if (text[prefixLength..].Trim().Length == 0)
+        {
+            paragraph.Inlines.Clear();
+            return true;
+        }
+
+        InsertParagraphAfter(selection, paragraph, $"{number + 1}. ");
+        return true;
+    }
+
+    private static void InsertParagraphAfter(TextSelection selection, Paragraph current, string text)
+    {
+        var next = new Paragraph(new Run(text))
+        {
+            Margin = new Thickness(0, 0, 0, 4)
+        };
+
+        switch (current.Parent)
+        {
+            case FlowDocument document:
+                document.Blocks.InsertAfter(current, next);
+                break;
+            case Section section:
+                section.Blocks.InsertAfter(current, next);
+                break;
+            default:
+                return;
+        }
+
+        var caret = next.ContentEnd.GetInsertionPosition(LogicalDirection.Backward);
+        if (caret is not null)
+        {
+            selection.Select(caret, caret);
+        }
+        next.BringIntoView();
+    }
+
+    private static (int Number, int PrefixLength)? GetNumberPrefix(string text)
+    {
+        var dot = text.IndexOf('.');
+        if (dot <= 0 || dot > 4)
+        {
+            return null;
+        }
+
+        var numberText = text[..dot];
+        if (!numberText.All(char.IsDigit) || !int.TryParse(numberText, out var number))
+        {
+            return null;
+        }
+
+        var prefixLength = dot + 1;
+        if (text.Length > prefixLength && text[prefixLength] == ' ')
+        {
+            prefixLength++;
+        }
+
+        return (number, prefixLength);
     }
 }
