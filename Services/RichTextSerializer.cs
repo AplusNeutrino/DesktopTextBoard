@@ -8,8 +8,8 @@ namespace DesktopTextBoard.Services;
 
 public static class RichTextSerializer
 {
-    private const double CompactListLeftMargin = 12;
-    private const double CompactListMarkerGap = 4;
+    private const double CompactListLeftMargin = -52;
+    private const double CompactListMarkerGap = 0;
 
     public static string Save(FlowDocument document)
     {
