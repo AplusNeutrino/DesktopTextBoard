@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using MediaBrush = System.Windows.Media.Brush;
@@ -87,6 +88,40 @@ public static class RichTextSerializer
         }
 
         return false;
+    }
+
+    public static bool HandleCompactDividerEnter(TextSelection selection)
+    {
+        var paragraph = selection.Start.Paragraph;
+        if (paragraph is null)
+        {
+            return false;
+        }
+
+        var text = new TextRange(paragraph.ContentStart, paragraph.ContentEnd).Text.Trim();
+        if (text != "---")
+        {
+            return false;
+        }
+
+        InsertDividerNear(selection, paragraph, replaceCurrent: true);
+        return true;
+    }
+
+    public static void InsertCompactDivider(FlowDocument document, TextSelection selection)
+    {
+        var paragraph = selection.Start.Paragraph;
+        if (paragraph is null)
+        {
+            var divider = CreateDividerBlock();
+            var next = CreateEmptyParagraph();
+            document.Blocks.Add(divider);
+            document.Blocks.Add(next);
+            MoveSelectionToParagraphEnd(selection, next);
+            return;
+        }
+
+        InsertDividerNear(selection, paragraph, replaceCurrent: false);
     }
 
     private static FlowDocument CreateEmpty(MediaBrush foreground, double fontSize)
@@ -183,6 +218,77 @@ public static class RichTextSerializer
         paragraph.Margin = new Thickness(0, 0, 0, 4);
     }
 
+    private static void InsertDividerNear(TextSelection selection, Paragraph paragraph, bool replaceCurrent)
+    {
+        var divider = CreateDividerBlock();
+        var next = CreateEmptyParagraph();
+
+        switch (paragraph.Parent)
+        {
+            case FlowDocument document:
+                if (replaceCurrent)
+                {
+                    document.Blocks.InsertBefore(paragraph, divider);
+                    document.Blocks.InsertAfter(divider, next);
+                    document.Blocks.Remove(paragraph);
+                }
+                else
+                {
+                    document.Blocks.InsertAfter(paragraph, divider);
+                    document.Blocks.InsertAfter(divider, next);
+                }
+                break;
+            case Section section:
+                if (replaceCurrent)
+                {
+                    section.Blocks.InsertBefore(paragraph, divider);
+                    section.Blocks.InsertAfter(divider, next);
+                    section.Blocks.Remove(paragraph);
+                }
+                else
+                {
+                    section.Blocks.InsertAfter(paragraph, divider);
+                    section.Blocks.InsertAfter(divider, next);
+                }
+                break;
+            default:
+                return;
+        }
+
+        MoveSelectionToParagraphEnd(selection, next);
+    }
+
+    private static BlockUIContainer CreateDividerBlock()
+    {
+        return new BlockUIContainer(new Border
+        {
+            Height = 1,
+            Background = new SolidColorBrush(Color.FromArgb(120, 170, 176, 184)),
+            Margin = new Thickness(0, 2, 0, 2)
+        })
+        {
+            Margin = new Thickness(0, 2, 0, 3)
+        };
+    }
+
+    private static Paragraph CreateEmptyParagraph()
+    {
+        return new Paragraph
+        {
+            Margin = new Thickness(0, 0, 0, 4)
+        };
+    }
+
+    private static void MoveSelectionToParagraphEnd(TextSelection selection, Paragraph paragraph)
+    {
+        var caret = paragraph.ContentEnd.GetInsertionPosition(LogicalDirection.Backward);
+        if (caret is not null)
+        {
+            selection.Select(caret, caret);
+        }
+        paragraph.BringIntoView();
+    }
+
     private static bool ContinueBulletList(TextSelection selection, Paragraph paragraph, string text)
     {
         if (text.Trim() == "•")
@@ -226,12 +332,7 @@ public static class RichTextSerializer
                 return;
         }
 
-        var caret = next.ContentEnd.GetInsertionPosition(LogicalDirection.Backward);
-        if (caret is not null)
-        {
-            selection.Select(caret, caret);
-        }
-        next.BringIntoView();
+        MoveSelectionToParagraphEnd(selection, next);
     }
 
     private static (int Number, int PrefixLength)? GetNumberPrefix(string text)

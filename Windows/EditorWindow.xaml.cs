@@ -221,6 +221,13 @@ public partial class EditorWindow : Window
             return;
         }
 
+        if (RichTextSerializer.HandleCompactDividerEnter(editor.Selection))
+        {
+            e.Handled = true;
+            SaveActiveEditor();
+            return;
+        }
+
         if (!RichTextSerializer.HandleCompactListEnter(editor.Selection))
         {
             return;
@@ -526,6 +533,17 @@ public partial class EditorWindow : Window
 
         TryApplyList(() => RichTextSerializer.ToggleCompactNumbering(_activeEditor.Document, _activeEditor.Selection));
     }
+
+    private void DividerButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeEditor is null)
+        {
+            return;
+        }
+
+        TryApplyList(() => RichTextSerializer.InsertCompactDivider(_activeEditor.Document, _activeEditor.Selection));
+    }
+
     private void AlignLeftButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.AlignLeft);
     private void AlignCenterButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.AlignCenter);
     private void AlignRightButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.AlignRight);
