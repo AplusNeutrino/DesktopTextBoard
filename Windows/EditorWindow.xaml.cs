@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using DesktopTextBoard.Models;
 using DesktopTextBoard.Services;
 using WpfRichTextBox = System.Windows.Controls.RichTextBox;
@@ -16,9 +17,11 @@ public partial class EditorWindow : Window
     private readonly BoardStore _boardStore;
     private readonly DesktopWidgetManager _widgetManager;
     private readonly List<MonitorInfo> _monitors;
+    private readonly DispatcherTimer _appearanceUpdateTimer;
     private WidgetConfig? _selectedWidget;
     private WpfRichTextBox? _activeEditor;
     private bool _isLoading;
+    private bool _isApplyingSelectionFormat;
     private bool _forceClose;
 
     public EditorWindow(BoardDocument document, BoardStore boardStore, DesktopWidgetManager widgetManager)
@@ -28,6 +31,15 @@ public partial class EditorWindow : Window
         _boardStore = boardStore;
         _widgetManager = widgetManager;
         _monitors = MonitorService.GetMonitors().ToList();
+        _appearanceUpdateTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(180)
+        };
+        _appearanceUpdateTimer.Tick += (_, _) =>
+        {
+            _appearanceUpdateTimer.Stop();
+            FlushAppearanceUpdate();
+        };
         SourceInitialized += (_, _) => NativeMethods.UseImmersiveDarkMode(this);
 
         InitializeToolbar();
@@ -149,10 +161,7 @@ public partial class EditorWindow : Window
 
         CanvasShell.Width = Math.Max(360, Math.Min(900, widget.Bounds.Width));
         CanvasShell.Height = Math.Max(260, Math.Min(650, widget.Bounds.Height));
-        CanvasShell.Background = BrushFactory.Solid(widget.Appearance.BackgroundColor, widget.Appearance.BackgroundOpacity);
-        CanvasShell.BorderBrush = BrushFactory.Solid(widget.Appearance.BorderColor, Math.Max(0.18, widget.Appearance.BorderOpacity));
-        CanvasShell.BorderThickness = new Thickness(widget.Appearance.ShowFrame ? Math.Max(1, widget.Appearance.BorderThickness) : 0);
-        CanvasShell.CornerRadius = new CornerRadius(widget.Appearance.CornerRadius);
+        ApplyEditorPreviewAppearance(widget);
 
         if (widget.Mode == WidgetMode.Single)
         {
@@ -286,7 +295,7 @@ public partial class EditorWindow : Window
 
     private void Editor_TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (_isLoading || sender is not WpfRichTextBox editor || editor.Tag is not CellConfig cell)
+        if (_isLoading || _isApplyingSelectionFormat || sender is not WpfRichTextBox editor || editor.Tag is not CellConfig cell)
         {
             return;
         }
@@ -481,7 +490,7 @@ public partial class EditorWindow : Window
             return;
         }
 
-        ApplyAppearanceFromControls();
+        QueueAppearanceUpdate();
     }
 
     private void ApplyAppearanceFromControls()
@@ -491,7 +500,40 @@ public partial class EditorWindow : Window
             return;
         }
 
-        var appearance = _selectedWidget.Appearance;
+        UpdateAppearanceFromControls(_selectedWidget);
+        ApplyEditorPreviewAppearance(_selectedWidget);
+        FlushAppearanceUpdate();
+    }
+
+    private void QueueAppearanceUpdate()
+    {
+        if (_isLoading || _selectedWidget is null)
+        {
+            return;
+        }
+
+        UpdateAppearanceFromControls(_selectedWidget);
+        ApplyEditorPreviewAppearance(_selectedWidget);
+        _appearanceUpdateTimer.Stop();
+        _appearanceUpdateTimer.Start();
+        SetStatus("外观更新待同步");
+    }
+
+    private void FlushAppearanceUpdate()
+    {
+        if (_isLoading || _selectedWidget is null)
+        {
+            return;
+        }
+
+        _widgetManager.RefreshWidget(_selectedWidget);
+        _boardStore.SaveSoon(_document);
+        SetStatus("外观已更新");
+    }
+
+    private void UpdateAppearanceFromControls(WidgetConfig widget)
+    {
+        var appearance = widget.Appearance;
         appearance.BackgroundColor = BrushFactory.NormalizeHex(BackgroundColorBox.Text, appearance.BackgroundColor);
         appearance.BackgroundOpacity = BackgroundOpacitySlider.Value;
         appearance.BorderColor = BrushFactory.NormalizeHex(BorderColorBox.Text, appearance.BorderColor);
@@ -505,10 +547,25 @@ public partial class EditorWindow : Window
         BackgroundColorBox.Text = appearance.BackgroundColor;
         BorderColorBox.Text = appearance.BorderColor;
         DefaultTextColorBox.Text = appearance.DefaultTextColor;
-        BuildEditorCanvas(_selectedWidget);
-        _widgetManager.RefreshWidget(_selectedWidget);
-        _boardStore.SaveSoon(_document);
-        SetStatus("外观已更新");
+    }
+
+    private void ApplyEditorPreviewAppearance(WidgetConfig widget)
+    {
+        var appearance = widget.Appearance;
+        CanvasShell.Background = BrushFactory.Solid(appearance.BackgroundColor, appearance.BackgroundOpacity);
+        CanvasShell.BorderBrush = BrushFactory.Solid(appearance.BorderColor, Math.Max(0.18, appearance.BorderOpacity));
+        CanvasShell.BorderThickness = new Thickness(appearance.ShowFrame ? Math.Max(1, appearance.BorderThickness) : 0);
+        CanvasShell.CornerRadius = new CornerRadius(appearance.CornerRadius);
+        CanvasShell.Padding = new Thickness(appearance.Padding);
+
+        var foreground = BrushFactory.Solid(appearance.DefaultTextColor);
+        foreach (var editor in CanvasHost.Children.OfType<WpfRichTextBox>())
+        {
+            editor.Foreground = foreground;
+            editor.FontSize = appearance.DefaultFontSize;
+            editor.Document.Foreground = foreground;
+            editor.Document.FontSize = appearance.DefaultFontSize;
+        }
     }
 
     private void BoldButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.ToggleBold);
@@ -550,19 +607,51 @@ public partial class EditorWindow : Window
 
     private void StrikethroughButton_Click(object sender, RoutedEventArgs e)
     {
-        _activeEditor?.Selection.ApplyPropertyValue(Inline.TextDecorationsProperty, TextDecorations.Strikethrough);
-        SaveActiveEditor();
+        ApplySelectionFormat(() => _activeEditor?.Selection.ApplyPropertyValue(Inline.TextDecorationsProperty, TextDecorations.Strikethrough));
     }
 
     private void FontSizeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_activeEditor is null || FontSizeBox.SelectedItem is not int size)
+        ApplyFontSizeFromToolbar();
+    }
+
+    private void FontSizeBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        ApplyFontSizeFromToolbar();
+    }
+
+    private void FontSizeBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
         {
             return;
         }
 
-        _activeEditor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, (double)size);
-        SaveActiveEditor();
+        ApplyFontSizeFromToolbar();
+        _activeEditor?.Focus();
+        e.Handled = true;
+    }
+
+    private void ApplyFontSizeFromToolbar()
+    {
+        if (_activeEditor is null || !TryGetToolbarFontSize(out var size))
+        {
+            return;
+        }
+
+        ApplySelectionFormat(() => _activeEditor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, size));
+    }
+
+    private bool TryGetToolbarFontSize(out double size)
+    {
+        size = 0;
+        var value = FontSizeBox.SelectedItem?.ToString();
+        if (FontSizeBox.IsEditable && !string.IsNullOrWhiteSpace(FontSizeBox.Text))
+        {
+            value = FontSizeBox.Text;
+        }
+
+        return double.TryParse(value, out size) && size is >= 6 and <= 96;
     }
 
     private void TextColorBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -572,8 +661,7 @@ public partial class EditorWindow : Window
             return;
         }
 
-        _activeEditor.Selection.ApplyPropertyValue(TextElement.ForegroundProperty, ColorNameToBrush(name));
-        SaveActiveEditor();
+        ApplySelectionFormat(() => _activeEditor.Selection.ApplyPropertyValue(TextElement.ForegroundProperty, ColorNameToBrush(name)));
     }
 
     private void HighlightColorBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -585,8 +673,7 @@ public partial class EditorWindow : Window
 
         var brush = name == "None" ? Brushes.Transparent.Clone() : ColorNameToBrush(name);
         brush.Opacity = name == "None" ? 0 : 0.55;
-        _activeEditor.Selection.ApplyPropertyValue(TextElement.BackgroundProperty, brush);
-        SaveActiveEditor();
+        ApplySelectionFormat(() => _activeEditor.Selection.ApplyPropertyValue(TextElement.BackgroundProperty, brush));
     }
 
     private void SaveNowButton_Click(object sender, RoutedEventArgs e)
@@ -605,6 +692,26 @@ public partial class EditorWindow : Window
 
         command.Execute(null, _activeEditor);
         RichTextSerializer.ApplyDesktopLayout(_activeEditor.Document);
+        SaveActiveEditor();
+    }
+
+    private void ApplySelectionFormat(Action action)
+    {
+        if (_activeEditor is null)
+        {
+            return;
+        }
+
+        _isApplyingSelectionFormat = true;
+        try
+        {
+            action();
+        }
+        finally
+        {
+            _isApplyingSelectionFormat = false;
+        }
+
         SaveActiveEditor();
     }
 
