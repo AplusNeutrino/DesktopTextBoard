@@ -64,7 +64,7 @@ public partial class DesktopWidgetWindow : Window
         var appearance = _widget.Appearance;
         ShellBorder.Background = BrushFactory.Solid(appearance.BackgroundColor, appearance.BackgroundOpacity);
         ShellBorder.BorderBrush = BrushFactory.Solid(appearance.BorderColor, appearance.BorderOpacity);
-        ShellBorder.BorderThickness = new Thickness(appearance.BorderThickness);
+        ShellBorder.BorderThickness = new Thickness(appearance.ShowFrame ? appearance.BorderThickness : 0);
         ShellBorder.CornerRadius = new CornerRadius(appearance.CornerRadius);
         ShellBorder.Padding = new Thickness(appearance.Padding);
         ShellBorder.ClipToBounds = true;
@@ -128,7 +128,7 @@ public partial class DesktopWidgetWindow : Window
             var cellBorder = new Border
             {
                 BorderBrush = BrushFactory.Solid(_widget.Appearance.BorderColor, Math.Min(0.18, _widget.Appearance.BorderOpacity + 0.06)),
-                BorderThickness = new Thickness(0.5),
+                BorderThickness = new Thickness(_widget.Appearance.ShowFrame ? 0.5 : 0),
                 Padding = new Thickness(6),
                 ClipToBounds = true,
                 Child = CreateDisplayBox(cell)
@@ -259,7 +259,7 @@ public partial class DesktopWidgetWindow : Window
 
     private void UpdateLockButtonPlacement()
     {
-        _lockButtonWindow.Left = Left + Width - 50;
+        _lockButtonWindow.Left = Left + Width - 42;
         _lockButtonWindow.Top = Top + 6;
     }
 }

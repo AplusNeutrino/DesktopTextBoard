@@ -115,6 +115,7 @@ public partial class EditorWindow : Window
         RowsBox.Text = widget.Grid.Rows.ToString();
         ColumnsBox.Text = widget.Grid.Columns.ToString();
         LockCheck.IsChecked = widget.IsLocked;
+        ShowFrameCheck.IsChecked = widget.Appearance.ShowFrame;
         MonitorCombo.SelectedItem = _monitors.FirstOrDefault(x => x.DeviceName == widget.MonitorDeviceName)
                                     ?? _monitors.FirstOrDefault(x => x.IsPrimary);
         LoadAppearanceControls(widget);
@@ -150,7 +151,7 @@ public partial class EditorWindow : Window
         CanvasShell.Height = Math.Max(260, Math.Min(650, widget.Bounds.Height));
         CanvasShell.Background = BrushFactory.Solid(widget.Appearance.BackgroundColor, widget.Appearance.BackgroundOpacity);
         CanvasShell.BorderBrush = BrushFactory.Solid(widget.Appearance.BorderColor, Math.Max(0.18, widget.Appearance.BorderOpacity));
-        CanvasShell.BorderThickness = new Thickness(Math.Max(1, widget.Appearance.BorderThickness));
+        CanvasShell.BorderThickness = new Thickness(widget.Appearance.ShowFrame ? Math.Max(1, widget.Appearance.BorderThickness) : 0);
         CanvasShell.CornerRadius = new CornerRadius(widget.Appearance.CornerRadius);
 
         if (widget.Mode == WidgetMode.Single)
@@ -400,6 +401,20 @@ public partial class EditorWindow : Window
         _widgetManager.RefreshWidget(_selectedWidget);
         _boardStore.SaveSoon(_document);
         SetStatus(_selectedWidget.IsLocked ? "已锁定桌面交互" : "已解锁，可移动和缩放");
+    }
+
+    private void ShowFrameCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isLoading || _selectedWidget is null)
+        {
+            return;
+        }
+
+        _selectedWidget.Appearance.ShowFrame = ShowFrameCheck.IsChecked == true;
+        BuildEditorCanvas(_selectedWidget);
+        _widgetManager.RefreshWidget(_selectedWidget);
+        _boardStore.SaveSoon(_document);
+        SetStatus(_selectedWidget.Appearance.ShowFrame ? "桌面边框已显示" : "桌面边框已隐藏");
     }
 
     private void MoveToMonitorButton_Click(object sender, RoutedEventArgs e)
