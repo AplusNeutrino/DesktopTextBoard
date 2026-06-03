@@ -21,8 +21,8 @@ public partial class LockButtonWindow : Window
 
     public void ApplyConfig()
     {
-        LockButton.Content = _widget.IsLocked ? "LOCK" : "EDIT";
-        LockButton.ToolTip = _widget.IsLocked ? "Unlock widget movement" : "Lock widget interaction";
+        LockButton.Content = _widget.IsLocked ? "锁定" : "解锁";
+        LockButton.ToolTip = _widget.IsLocked ? "解除锁定，允许移动和缩放" : "锁定小组件并启用点击穿透";
     }
 
     public void ForceClose()

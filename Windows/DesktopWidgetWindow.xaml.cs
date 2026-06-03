@@ -259,7 +259,7 @@ public partial class DesktopWidgetWindow : Window
 
     private void UpdateLockButtonPlacement()
     {
-        _lockButtonWindow.Left = Left + Width - 34;
+        _lockButtonWindow.Left = Left + Width - 50;
         _lockButtonWindow.Top = Top + 6;
     }
 }

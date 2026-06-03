@@ -36,6 +36,7 @@ public partial class EditorWindow : Window
         {
             WidgetList.SelectedIndex = 0;
         }
+        SetStatus("已就绪");
     }
 
     public void ForceClose()
@@ -103,6 +104,7 @@ public partial class EditorWindow : Window
 
         if (widget is null)
         {
+            SetStatus("未选择小组件");
             return;
         }
 
@@ -118,6 +120,7 @@ public partial class EditorWindow : Window
         _isLoading = false;
 
         BuildEditorCanvas(widget);
+        SetStatus($"正在编辑：{widget.Name}");
     }
 
     private void LoadAppearanceControls(WidgetConfig widget)
@@ -279,6 +282,7 @@ public partial class EditorWindow : Window
         WidgetList.SelectedItem = widget;
         _widgetManager.ShowWidget(widget);
         _boardStore.SaveSoon(_document);
+        SetStatus($"已新增：{widget.Name}");
     }
 
     private void DuplicateWidgetButton_Click(object sender, RoutedEventArgs e)
@@ -294,21 +298,40 @@ public partial class EditorWindow : Window
         WidgetList.SelectedItem = clone;
         _widgetManager.ShowWidget(clone);
         _boardStore.SaveSoon(_document);
+        SetStatus($"已复制：{clone.Name}");
     }
 
     private void DeleteWidgetButton_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedWidget is null || _document.ActiveBoard.Widgets.Count <= 1)
         {
+            if (_document.ActiveBoard.Widgets.Count <= 1)
+            {
+                MessageBox.Show(this, "至少需要保留一个小组件。", "无法删除", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
             return;
         }
 
+        var result = MessageBox.Show(
+            this,
+            $"确定删除“{_selectedWidget.Name}”吗？此操作无法撤销。",
+            "删除小组件",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        var deletedName = _selectedWidget.Name;
         var id = _selectedWidget.Id;
         _document.ActiveBoard.Widgets.Remove(_selectedWidget);
         _widgetManager.CloseWidget(id);
         LoadWidgetList();
         WidgetList.SelectedIndex = 0;
         _boardStore.SaveSoon(_document);
+        SetStatus($"已删除：{deletedName}");
     }
 
     private void NameBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -321,6 +344,7 @@ public partial class EditorWindow : Window
         _selectedWidget.Name = string.IsNullOrWhiteSpace(NameBox.Text) ? "Desktop Board" : NameBox.Text.Trim();
         WidgetList.Items.Refresh();
         _boardStore.SaveSoon(_document);
+        SetStatus("名称已更新");
     }
 
     private void ModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -334,6 +358,7 @@ public partial class EditorWindow : Window
         BuildEditorCanvas(_selectedWidget);
         _widgetManager.RefreshWidget(_selectedWidget);
         _boardStore.SaveSoon(_document);
+        SetStatus("模式已更新");
     }
 
     private void ApplyGridButton_Click(object sender, RoutedEventArgs e)
@@ -360,6 +385,7 @@ public partial class EditorWindow : Window
         BuildEditorCanvas(_selectedWidget);
         _widgetManager.RefreshWidget(_selectedWidget);
         _boardStore.SaveSoon(_document);
+        SetStatus($"网格已更新为 {_selectedWidget.Grid.Rows} x {_selectedWidget.Grid.Columns}");
     }
 
     private void LockCheck_Changed(object sender, RoutedEventArgs e)
@@ -372,6 +398,7 @@ public partial class EditorWindow : Window
         _selectedWidget.IsLocked = LockCheck.IsChecked == true;
         _widgetManager.RefreshWidget(_selectedWidget);
         _boardStore.SaveSoon(_document);
+        SetStatus(_selectedWidget.IsLocked ? "已锁定桌面交互" : "已解锁，可移动和缩放");
     }
 
     private void MoveToMonitorButton_Click(object sender, RoutedEventArgs e)
@@ -384,6 +411,7 @@ public partial class EditorWindow : Window
         MonitorService.MoveToMonitor(_selectedWidget, monitor);
         _widgetManager.RefreshWidget(_selectedWidget);
         _boardStore.SaveSoon(_document);
+        SetStatus($"已移动到：{monitor.DisplayName}");
     }
 
     private void PresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -397,6 +425,7 @@ public partial class EditorWindow : Window
         SelectWidget(_selectedWidget);
         _widgetManager.RefreshWidget(_selectedWidget);
         _boardStore.SaveSoon(_document);
+        SetStatus($"已应用预设：{preset}");
     }
 
     private void AppearanceBox_LostFocus(object sender, RoutedEventArgs e)
@@ -438,6 +467,7 @@ public partial class EditorWindow : Window
         BuildEditorCanvas(_selectedWidget);
         _widgetManager.RefreshWidget(_selectedWidget);
         _boardStore.SaveSoon(_document);
+        SetStatus("外观已更新");
     }
 
     private void BoldButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.ToggleBold);
@@ -494,6 +524,7 @@ public partial class EditorWindow : Window
     {
         _boardStore.SaveNow(_document);
         _widgetManager.RefreshAll();
+        SetStatus("已保存");
     }
 
     private void Execute(RoutedUICommand command)
@@ -520,6 +551,12 @@ public partial class EditorWindow : Window
             _widgetManager.RefreshWidget(_selectedWidget);
         }
         _boardStore.SaveSoon(_document);
+        SetStatus("内容已同步");
+    }
+
+    private void SetStatus(string message)
+    {
+        StatusText.Text = message;
     }
 
     private static SolidColorBrush ColorNameToBrush(string name)

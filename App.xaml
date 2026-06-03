@@ -3,25 +3,74 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              ShutdownMode="OnExplicitShutdown">
   <Application.Resources>
-    <SolidColorBrush x:Key="PanelBrush" Color="#20232A"/>
-    <SolidColorBrush x:Key="PanelAltBrush" Color="#2A2E36"/>
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#12161C"/>
+    <SolidColorBrush x:Key="PanelBrush" Color="#1B2028"/>
+    <SolidColorBrush x:Key="PanelAltBrush" Color="#252B34"/>
+    <SolidColorBrush x:Key="CanvasBackgroundBrush" Color="#0E1116"/>
     <SolidColorBrush x:Key="TextBrush" Color="#F3F5F7"/>
     <SolidColorBrush x:Key="SubtleTextBrush" Color="#AAB0B8"/>
+    <SolidColorBrush x:Key="MutedTextBrush" Color="#7F8996"/>
+    <SolidColorBrush x:Key="BorderBrush" Color="#343B46"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#14B8A6"/>
+    <SolidColorBrush x:Key="AccentDarkBrush" Color="#0F766E"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>
+
     <Style TargetType="Button">
       <Setter Property="Margin" Value="3"/>
-      <Setter Property="Padding" Value="8,5"/>
-      <Setter Property="MinHeight" Value="28"/>
+      <Setter Property="Padding" Value="10,6"/>
+      <Setter Property="MinHeight" Value="34"/>
+      <Setter Property="MinWidth" Value="34"/>
+      <Setter Property="Background" Value="{StaticResource PanelAltBrush}"/>
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="{StaticResource AccentDarkBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+      <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="#3A1B20"/>
+      <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}"/>
+      <Setter Property="Foreground" Value="#FFD9DE"/>
+    </Style>
+    <Style x:Key="ToolbarButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Margin" Value="2"/>
+      <Setter Property="Padding" Value="8,4"/>
+      <Setter Property="MinHeight" Value="32"/>
+      <Setter Property="MinWidth" Value="32"/>
     </Style>
     <Style TargetType="TextBox">
       <Setter Property="Margin" Value="0,3,0,8"/>
-      <Setter Property="Padding" Value="6,4"/>
+      <Setter Property="Padding" Value="8,6"/>
+      <Setter Property="MinHeight" Value="34"/>
+      <Setter Property="Background" Value="#11161D"/>
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+      <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}"/>
     </Style>
     <Style TargetType="ComboBox">
       <Setter Property="Margin" Value="0,3,0,8"/>
-      <Setter Property="Padding" Value="5,3"/>
+      <Setter Property="Padding" Value="6,4"/>
+      <Setter Property="MinHeight" Value="34"/>
     </Style>
     <Style TargetType="Slider">
       <Setter Property="Margin" Value="0,3,0,8"/>
+    </Style>
+    <Style TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+    <Style x:Key="FieldLabel" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+      <Setter Property="Foreground" Value="{StaticResource SubtleTextBrush}"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Margin" Value="0,8,0,0"/>
+    </Style>
+    <Style TargetType="Expander">
+      <Setter Property="Margin" Value="0,0,0,10"/>
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
     </Style>
   </Application.Resources>
 </Application>
