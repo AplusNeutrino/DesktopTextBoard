@@ -148,7 +148,15 @@ public static class RichTextSerializer
             return;
         }
 
-        paragraph.Inlines.InsertBefore(paragraph.Inlines.FirstInline, new Run(prefix));
+        var prefixRun = new Run(prefix);
+        if (paragraph.Inlines.FirstInline is null)
+        {
+            paragraph.Inlines.Add(prefixRun);
+        }
+        else
+        {
+            paragraph.Inlines.InsertBefore(paragraph.Inlines.FirstInline, prefixRun);
+        }
         paragraph.Margin = new Thickness(0, 0, 0, 4);
     }
 }

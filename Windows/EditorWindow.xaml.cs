@@ -497,8 +497,7 @@ public partial class EditorWindow : Window
             return;
         }
 
-        RichTextSerializer.ToggleCompactBullets(_activeEditor.Document, _activeEditor.Selection);
-        SaveActiveEditor();
+        TryApplyList(() => RichTextSerializer.ToggleCompactBullets(_activeEditor.Document, _activeEditor.Selection));
     }
 
     private void NumbersButton_Click(object sender, RoutedEventArgs e)
@@ -508,8 +507,7 @@ public partial class EditorWindow : Window
             return;
         }
 
-        RichTextSerializer.ToggleCompactNumbering(_activeEditor.Document, _activeEditor.Selection);
-        SaveActiveEditor();
+        TryApplyList(() => RichTextSerializer.ToggleCompactNumbering(_activeEditor.Document, _activeEditor.Selection));
     }
     private void AlignLeftButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.AlignLeft);
     private void AlignCenterButton_Click(object sender, RoutedEventArgs e) => Execute(EditingCommands.AlignCenter);
@@ -573,6 +571,19 @@ public partial class EditorWindow : Window
         command.Execute(null, _activeEditor);
         RichTextSerializer.ApplyDesktopLayout(_activeEditor.Document);
         SaveActiveEditor();
+    }
+
+    private void TryApplyList(Action action)
+    {
+        try
+        {
+            action();
+            SaveActiveEditor();
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"列表格式失败：{ex.Message}");
+        }
     }
 
     private void SaveActiveEditor()
