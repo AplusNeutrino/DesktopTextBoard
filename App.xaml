@@ -49,7 +49,7 @@
       <Setter Property="Background" Value="#11161D"/>
       <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
       <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-      <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}"/>
+      <Setter Property="CaretBrush" Value="{StaticResource TextBrush}"/>
     </Style>
     <Style TargetType="ComboBoxItem">
       <Setter Property="Background" Value="#11161D"/>

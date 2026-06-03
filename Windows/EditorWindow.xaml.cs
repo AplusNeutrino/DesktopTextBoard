@@ -202,6 +202,7 @@ public partial class EditorWindow : Window
             Padding = new Thickness(8),
             Background = Brushes.Transparent,
             Foreground = foreground,
+            CaretBrush = Brushes.White,
             BorderBrush = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
             BorderThickness = new Thickness(1),
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
