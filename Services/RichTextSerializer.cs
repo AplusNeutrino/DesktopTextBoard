@@ -8,8 +8,12 @@ namespace DesktopTextBoard.Services;
 
 public static class RichTextSerializer
 {
+    private const double CompactListLeftMargin = 12;
+    private const double CompactListMarkerGap = 4;
+
     public static string Save(FlowDocument document)
     {
+        ApplyDesktopLayout(document);
         var range = new TextRange(document.ContentStart, document.ContentEnd);
         using var stream = new MemoryStream();
         range.Save(stream, DataFormats.XamlPackage);
@@ -47,6 +51,11 @@ public static class RichTextSerializer
         return Load(Save(document), foreground, fontSize);
     }
 
+    public static void ApplyDesktopLayout(FlowDocument document)
+    {
+        NormalizeBlocks(document.Blocks);
+    }
+
     private static FlowDocument CreateEmpty(MediaBrush foreground, double fontSize)
     {
         var document = new FlowDocument
@@ -66,5 +75,31 @@ public static class RichTextSerializer
         document.Background = Brushes.Transparent;
         document.Foreground = foreground;
         document.FontSize = fontSize;
+        ApplyDesktopLayout(document);
+    }
+
+    private static void NormalizeBlocks(BlockCollection blocks)
+    {
+        foreach (var block in blocks)
+        {
+            switch (block)
+            {
+                case Paragraph paragraph:
+                    paragraph.Margin = new Thickness(0, 0, 0, 4);
+                    break;
+                case List list:
+                    list.Margin = new Thickness(CompactListLeftMargin, 0, 0, 4);
+                    list.MarkerOffset = CompactListMarkerGap;
+                    foreach (var item in list.ListItems)
+                    {
+                        NormalizeBlocks(item.Blocks);
+                    }
+                    break;
+                case Section section:
+                    section.Margin = new Thickness(0);
+                    NormalizeBlocks(section.Blocks);
+                    break;
+            }
+        }
     }
 }

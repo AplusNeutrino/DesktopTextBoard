@@ -552,6 +552,7 @@ public partial class EditorWindow : Window
         }
 
         command.Execute(null, _activeEditor);
+        RichTextSerializer.ApplyDesktopLayout(_activeEditor.Document);
         SaveActiveEditor();
     }
 
@@ -562,6 +563,7 @@ public partial class EditorWindow : Window
             return;
         }
 
+        RichTextSerializer.ApplyDesktopLayout(_activeEditor.Document);
         cell.Content = RichTextSerializer.Save(_activeEditor.Document);
         if (_selectedWidget is not null)
         {
