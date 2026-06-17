@@ -1,4 +1,5 @@
 using System.IO;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -12,9 +13,12 @@ public static class RichTextSerializer
     private const double CompactListLeftMargin = 0;
     private const double CompactListMarkerGap = 0;
     private const string HiddenDividerToken = "[[DTB_DIVIDER]]";
+    private const char DividerGlyph = '\u2501';
     private const string LegacyDividerText = "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500";
     private const string HeavyDividerText = "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501";
-    private const string VisibleDividerText = "------------------------";
+    private const string VisibleDividerText = "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501";
+    private const double DividerFontSize = 7;
+    private static readonly Color DividerColor = Color.FromArgb(210, 214, 221, 232);
 
     public static string Save(FlowDocument document)
     {
@@ -56,19 +60,62 @@ public static class RichTextSerializer
         return Load(Save(document), foreground, fontSize);
     }
 
+    public static string MergeCellContents(IEnumerable<string> contents, MediaBrush foreground, double fontSize)
+    {
+        var documents = contents
+            .Select(content => Load(content, foreground, fontSize))
+            .Where(HasVisibleContent)
+            .ToList();
+
+        if (documents.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var merged = CreateEmpty(foreground, fontSize);
+        merged.Blocks.Clear();
+
+        foreach (var document in documents)
+        {
+            if (merged.Blocks.Count > 0)
+            {
+                merged.Blocks.Add(CreateEmptyParagraph());
+            }
+
+            while (document.Blocks.FirstBlock is { } block)
+            {
+                document.Blocks.Remove(block);
+                merged.Blocks.Add(block);
+            }
+        }
+
+        return Save(merged);
+    }
+
     public static void ApplyDesktopLayout(FlowDocument document)
     {
         NormalizeBlocks(document.Blocks);
     }
 
+    public static void FitDividersToWidth(FlowDocument document, double availableWidth)
+    {
+        if (double.IsNaN(availableWidth) || double.IsInfinity(availableWidth) || availableWidth <= 0)
+        {
+            return;
+        }
+
+        var dividerText = CreateDividerText(availableWidth);
+        FitDividersToWidth(document.Blocks, dividerText);
+    }
+
     public static void ToggleCompactBullets(FlowDocument document, TextSelection selection)
     {
-        InsertCompactPrefix(document, selection, "• ");
+        InsertCompactBullets(document, selection);
     }
 
     public static void ToggleCompactNumbering(FlowDocument document, TextSelection selection)
     {
-        InsertCompactPrefix(document, selection, "1. ");
+        InsertCompactNumbering(document, selection);
     }
 
     public static bool HandleCompactListEnter(TextSelection selection)
@@ -141,6 +188,14 @@ public static class RichTextSerializer
         return document;
     }
 
+    private static bool HasVisibleContent(FlowDocument document)
+    {
+        var text = new TextRange(document.ContentStart, document.ContentEnd)
+            .Text
+            .Trim();
+        return text.Length > 0;
+    }
+
     private static void ApplyDefaults(FlowDocument document, MediaBrush foreground, double fontSize)
     {
         document.PagePadding = new Thickness(0);
@@ -159,7 +214,7 @@ public static class RichTextSerializer
                 case Paragraph paragraph:
                     if (IsDividerParagraph(paragraph))
                     {
-                        ApplyDividerStyle(paragraph);
+                        ApplyDividerStyle(paragraph, dividerText: null);
                     }
                     else
                     {
@@ -173,9 +228,29 @@ public static class RichTextSerializer
                     blocks.InsertBefore(container, CreateDividerBlock());
                     blocks.Remove(container);
                     break;
+                case BlockUIContainer container when IsVisualDividerContainer(container):
+                    blocks.InsertBefore(container, CreateDividerBlock());
+                    blocks.Remove(container);
+                    break;
                 case Section section:
                     section.Margin = new Thickness(0);
                     NormalizeBlocks(section.Blocks);
+                    break;
+            }
+        }
+    }
+
+    private static void FitDividersToWidth(BlockCollection blocks, string dividerText)
+    {
+        foreach (var block in blocks.ToList())
+        {
+            switch (block)
+            {
+                case Paragraph paragraph when IsDividerParagraph(paragraph):
+                    ApplyDividerStyle(paragraph, dividerText);
+                    break;
+                case Section section:
+                    FitDividersToWidth(section.Blocks, dividerText);
                     break;
             }
         }
@@ -205,18 +280,87 @@ public static class RichTextSerializer
         parentBlocks.Remove(list);
     }
 
-    private static void InsertCompactPrefix(FlowDocument document, TextSelection selection, string prefix)
+    private static void InsertCompactBullets(FlowDocument document, TextSelection selection)
     {
-        var paragraph = selection.Start.Paragraph;
-        if (paragraph is null)
+        var paragraphs = GetSelectedParagraphs(document, selection);
+        if (paragraphs.Count == 0)
         {
-            document.Blocks.Add(new Paragraph(new Run(prefix)));
+            document.Blocks.Add(new Paragraph(new Run("• ")));
             return;
         }
 
+        foreach (var paragraph in paragraphs)
+        {
+            InsertCompactPrefix(paragraph, "• ");
+        }
+    }
+
+    private static void InsertCompactNumbering(FlowDocument document, TextSelection selection)
+    {
+        var paragraphs = GetSelectedParagraphs(document, selection);
+        if (paragraphs.Count == 0)
+        {
+            document.Blocks.Add(new Paragraph(new Run("1. ")));
+            return;
+        }
+
+        var number = 1;
+        foreach (var paragraph in paragraphs)
+        {
+            InsertCompactPrefix(paragraph, $"{number}. ");
+            number++;
+        }
+    }
+
+    private static List<Paragraph> GetSelectedParagraphs(FlowDocument document, TextSelection selection)
+    {
+        if (selection.IsEmpty)
+        {
+            return selection.Start.Paragraph is { } current && !IsDividerParagraph(current)
+                ? new List<Paragraph> { current }
+                : new List<Paragraph>();
+        }
+
+        var paragraphs = new List<Paragraph>();
+        CollectSelectedParagraphs(document.Blocks, selection.Start, selection.End, paragraphs);
+
+        if (paragraphs.Count == 0 && selection.Start.Paragraph is { } fallback && !IsDividerParagraph(fallback))
+        {
+            paragraphs.Add(fallback);
+        }
+
+        return paragraphs;
+    }
+
+    private static void CollectSelectedParagraphs(
+        BlockCollection blocks,
+        TextPointer selectionStart,
+        TextPointer selectionEnd,
+        List<Paragraph> paragraphs)
+    {
+        foreach (var block in blocks)
+        {
+            switch (block)
+            {
+                case Paragraph paragraph when !IsDividerParagraph(paragraph)
+                    && paragraph.ContentEnd.CompareTo(selectionStart) > 0
+                    && paragraph.ContentStart.CompareTo(selectionEnd) < 0:
+                    paragraphs.Add(paragraph);
+                    break;
+                case Section section:
+                    CollectSelectedParagraphs(section.Blocks, selectionStart, selectionEnd, paragraphs);
+                    break;
+            }
+        }
+    }
+
+    private static void InsertCompactPrefix(Paragraph paragraph, string prefix)
+    {
         var lineRange = new TextRange(paragraph.ContentStart, paragraph.ContentEnd);
         var text = lineRange.Text.TrimStart();
-        if (text.StartsWith(prefix, StringComparison.Ordinal))
+        if (text.StartsWith(prefix, StringComparison.Ordinal)
+            || (prefix == "• " && text.StartsWith("• ", StringComparison.Ordinal))
+            || (prefix != "• " && GetNumberPrefix(text) is not null))
         {
             return;
         }
@@ -275,14 +419,8 @@ public static class RichTextSerializer
 
     private static Paragraph CreateDividerBlock()
     {
-        var paragraph = new Paragraph(new Run(VisibleDividerText))
-        {
-            Margin = new Thickness(0, 1, 0, 2),
-            Padding = new Thickness(0),
-            FontSize = 8,
-            LineHeight = 8,
-            Foreground = new SolidColorBrush(Color.FromRgb(190, 196, 205))
-        };
+        var paragraph = new Paragraph(new Run(VisibleDividerText));
+        ApplyDividerStyle(paragraph, dividerText: null);
         return paragraph;
     }
 
@@ -302,7 +440,8 @@ public static class RichTextSerializer
         return text == HiddenDividerToken
             || text == LegacyDividerText
             || text == HeavyDividerText
-            || text == VisibleDividerText;
+            || text == VisibleDividerText
+            || IsDividerText(text);
     }
 
     private static bool IsLegacyDividerContainer(BlockUIContainer container)
@@ -313,17 +452,93 @@ public static class RichTextSerializer
             && border.Margin.Bottom <= 3;
     }
 
-    private static void ApplyDividerStyle(Paragraph paragraph)
+    private static bool IsVisualDividerContainer(BlockUIContainer container)
     {
-        paragraph.Inlines.Clear();
-        paragraph.Inlines.Add(new Run(VisibleDividerText));
-        paragraph.Margin = new Thickness(0, 1, 0, 2);
-        paragraph.Padding = new Thickness(0);
-        paragraph.FontSize = 8;
-        paragraph.LineHeight = 8;
-        paragraph.Foreground = new SolidColorBrush(Color.FromRgb(190, 196, 205));
-        paragraph.BorderThickness = new Thickness(0);
-        paragraph.BorderBrush = Brushes.Transparent;
+        return container.Child is FrameworkElement element
+            && element.Tag is string tag
+            && tag == HiddenDividerToken;
+    }
+
+    private static void ApplyDividerStyle(Paragraph paragraph, string? dividerText)
+    {
+        var text = new TextRange(paragraph.ContentStart, paragraph.ContentEnd)
+            .Text
+            .Trim();
+        var normalizedText = dividerText ?? (IsDividerText(text) ? text : VisibleDividerText);
+        if (text != normalizedText)
+        {
+            paragraph.Inlines.Clear();
+            paragraph.Inlines.Add(new Run(normalizedText));
+        }
+
+        SetIfDifferent(paragraph, Block.MarginProperty, new Thickness(0, 1, 0, 2));
+        SetIfDifferent(paragraph, Block.PaddingProperty, new Thickness(0));
+        SetIfDifferent(paragraph, TextElement.FontSizeProperty, DividerFontSize);
+        SetIfDifferent(paragraph, Block.LineHeightProperty, DividerFontSize);
+        if (!IsSolidColor(paragraph.Foreground, DividerColor))
+        {
+            paragraph.Foreground = CreateFrozenBrush(DividerColor);
+        }
+        SetIfDifferent(paragraph, Block.BorderThicknessProperty, new Thickness(0));
+        if (!IsSolidColor(paragraph.BorderBrush, Colors.Transparent))
+        {
+            paragraph.BorderBrush = Brushes.Transparent;
+        }
+    }
+
+    private static void SetIfDifferent<T>(DependencyObject target, DependencyProperty property, T value)
+    {
+        if (!Equals(target.GetValue(property), value))
+        {
+            target.SetValue(property, value);
+        }
+    }
+
+    private static SolidColorBrush CreateFrozenBrush(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
+
+    private static bool IsSolidColor(MediaBrush brush, Color color)
+    {
+        return brush is SolidColorBrush solid
+            && solid.Color == color
+            && Math.Abs(solid.Opacity - 1) < 0.001;
+    }
+
+    private static bool IsDividerText(string text)
+    {
+        return text.Length >= 3
+            && text.All(ch => ch is DividerGlyph or '\u2500' or '-');
+    }
+
+    private static string CreateDividerText(double availableWidth)
+    {
+        var targetWidth = Math.Max(24, availableWidth - 42);
+        var glyphWidth = MeasureDividerGlyph();
+        var count = (int)Math.Floor(targetWidth / Math.Max(1, glyphWidth));
+        count = Math.Clamp(count, 8, 160);
+        return new string(DividerGlyph, count);
+    }
+
+    private static double MeasureDividerGlyph()
+    {
+        var typeface = new Typeface(
+            new FontFamily("Segoe UI"),
+            FontStyles.Normal,
+            FontWeights.Normal,
+            FontStretches.Normal);
+        var formatted = new FormattedText(
+            DividerGlyph.ToString(),
+            CultureInfo.CurrentUICulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            DividerFontSize,
+            Brushes.White,
+            1);
+        return formatted.WidthIncludingTrailingWhitespace;
     }
 
     private static void MoveSelectionToParagraphEnd(TextSelection selection, Paragraph paragraph)

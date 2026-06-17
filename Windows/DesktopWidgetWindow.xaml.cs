@@ -136,6 +136,8 @@ public partial class DesktopWidgetWindow : Window
 
             Grid.SetRow(cellBorder, cell.Row);
             Grid.SetColumn(cellBorder, cell.Column);
+            Grid.SetRowSpan(cellBorder, cell.RowSpan);
+            Grid.SetColumnSpan(cellBorder, cell.ColumnSpan);
             ContentGrid.Children.Add(cellBorder);
         }
     }
@@ -143,7 +145,7 @@ public partial class DesktopWidgetWindow : Window
     private WpfRichTextBox CreateDisplayBox(CellConfig cell)
     {
         var foreground = BrushFactory.Solid(_widget.Appearance.DefaultTextColor);
-        return new WpfRichTextBox
+        var displayBox = new WpfRichTextBox
         {
             Document = RichTextSerializer.Load(cell.Content, foreground, _widget.Appearance.DefaultFontSize),
             Background = Brushes.Transparent,
@@ -155,6 +157,23 @@ public partial class DesktopWidgetWindow : Window
             VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden
         };
+        displayBox.Loaded += (_, _) => FitDisplayDividers(displayBox);
+        displayBox.SizeChanged += (_, _) => FitDisplayDividers(displayBox);
+        return displayBox;
+    }
+
+    private static void FitDisplayDividers(WpfRichTextBox displayBox)
+    {
+        if (displayBox.ActualWidth <= 0)
+        {
+            return;
+        }
+
+        var availableWidth = displayBox.ActualWidth
+            - displayBox.Padding.Left
+            - displayBox.Padding.Right
+            - 12;
+        RichTextSerializer.FitDividersToWidth(displayBox.Document, availableWidth);
     }
 
     private void SetUnlockedChrome(bool visible)

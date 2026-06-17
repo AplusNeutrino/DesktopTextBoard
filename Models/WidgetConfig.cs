@@ -42,28 +42,51 @@ public sealed class WidgetConfig
     public void EnsureCells()
     {
         Grid.Normalize();
-        var required = new HashSet<string>();
+        var covered = new bool[Grid.Rows, Grid.Columns];
+        var normalized = new List<CellConfig>();
+
+        foreach (var cell in Cells
+                     .OrderBy(x => x.Row)
+                     .ThenBy(x => x.Column)
+                     .ToList())
+        {
+            NormalizeCellBounds(cell);
+            if (covered[cell.Row, cell.Column])
+            {
+                continue;
+            }
+
+            if (SpanIntersectsCovered(covered, cell))
+            {
+                cell.RowSpan = 1;
+                cell.ColumnSpan = 1;
+            }
+
+            MarkCovered(covered, cell);
+            normalized.Add(cell);
+        }
 
         for (var row = 0; row < Grid.Rows; row++)
         {
             for (var column = 0; column < Grid.Columns; column++)
             {
-                required.Add(CellKey(row, column));
-                if (Cells.Any(x => x.Row == row && x.Column == column))
+                if (covered[row, column])
                 {
                     continue;
                 }
 
-                Cells.Add(new CellConfig
+                var cell = new CellConfig
                 {
                     Id = Guid.NewGuid().ToString("N"),
                     Row = row,
                     Column = column
-                });
+                };
+                normalized.Add(cell);
+                covered[row, column] = true;
             }
         }
 
-        Cells.RemoveAll(x => !required.Contains(CellKey(x.Row, x.Column)));
+        Cells = normalized;
         Cells.Sort((a, b) =>
         {
             var rowCompare = a.Row.CompareTo(b.Row);
@@ -98,6 +121,41 @@ public sealed class WidgetConfig
     }
 
     private static string CellKey(int row, int column) => $"{row}:{column}";
+
+    private void NormalizeCellBounds(CellConfig cell)
+    {
+        cell.Row = Math.Clamp(cell.Row, 0, Grid.Rows - 1);
+        cell.Column = Math.Clamp(cell.Column, 0, Grid.Columns - 1);
+        cell.RowSpan = Math.Clamp(cell.RowSpan <= 0 ? 1 : cell.RowSpan, 1, Grid.Rows - cell.Row);
+        cell.ColumnSpan = Math.Clamp(cell.ColumnSpan <= 0 ? 1 : cell.ColumnSpan, 1, Grid.Columns - cell.Column);
+    }
+
+    private static bool SpanIntersectsCovered(bool[,] covered, CellConfig cell)
+    {
+        for (var row = cell.Row; row < cell.Row + cell.RowSpan; row++)
+        {
+            for (var column = cell.Column; column < cell.Column + cell.ColumnSpan; column++)
+            {
+                if (covered[row, column])
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static void MarkCovered(bool[,] covered, CellConfig cell)
+    {
+        for (var row = cell.Row; row < cell.Row + cell.RowSpan; row++)
+        {
+            for (var column = cell.Column; column < cell.Column + cell.ColumnSpan; column++)
+            {
+                covered[row, column] = true;
+            }
+        }
+    }
 }
 
 public enum WidgetMode
