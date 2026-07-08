@@ -19,6 +19,7 @@ public partial class DesktopWidgetWindow : Window
     public DesktopWidgetWindow(WidgetConfig widget, Action changed)
     {
         InitializeComponent();
+        WindowIconService.Apply(this);
         _widget = widget;
         _changed = changed;
         _lockButtonWindow = new LockButtonWindow(widget, () =>

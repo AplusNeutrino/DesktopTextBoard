@@ -1,6 +1,6 @@
-# Desktop Text Board
+# 阿卡夏便笺 Akasha Notes
 
-Desktop Text Board is a lightweight Windows WPF utility for transparent desktop text widgets.
+阿卡夏便笺 Akasha Notes is a lightweight Windows WPF utility for transparent desktop text widgets.
 
 ## Current First-Version Features
 
@@ -17,7 +17,7 @@ Desktop Text Board is a lightweight Windows WPF utility for transparent desktop 
 - Appearance controls for opacity, border, radius, padding, default color, and font size.
 - Basic appearance presets.
 - Multi-monitor placement and switch-monitor action.
-- JSON auto-save under `%LOCALAPPDATA%\DesktopTextBoard\boards.json`.
+- JSON auto-save under `%LOCALAPPDATA%\AkashaNotes\boards.json`.
 - Import and export backup from the tray menu.
 - Optional start with Windows toggle.
 

@@ -75,6 +75,7 @@ public partial class EditorWindow : Window
     public EditorWindow(BoardDocument document, BoardStore boardStore, DesktopWidgetManager widgetManager)
     {
         InitializeComponent();
+        WindowIconService.Apply(this);
         _document = document;
         _boardStore = boardStore;
         _widgetManager = widgetManager;
@@ -903,7 +904,7 @@ public partial class EditorWindow : Window
             return;
         }
 
-        _selectedWidget.Name = string.IsNullOrWhiteSpace(NameBox.Text) ? "Desktop Board" : NameBox.Text.Trim();
+        _selectedWidget.Name = string.IsNullOrWhiteSpace(NameBox.Text) ? "阿卡夏便笺" : NameBox.Text.Trim();
         WidgetList.Items.Refresh();
         _boardStore.SaveSoon(_document);
         SetStatus("名称已更新");

@@ -3,7 +3,7 @@ namespace DesktopTextBoard.Models;
 public sealed class WidgetConfig
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
-    public string Name { get; set; } = "Desktop Board";
+    public string Name { get; set; } = "阿卡夏便笺";
     public WidgetMode Mode { get; set; } = WidgetMode.Grid;
     public bool IsLocked { get; set; } = true;
     public string MonitorDeviceName { get; set; } = "primary";
@@ -17,7 +17,7 @@ public sealed class WidgetConfig
         var widget = new WidgetConfig
         {
             Id = "widget-default",
-            Name = "Desktop Board",
+            Name = "阿卡夏便笺",
             Mode = WidgetMode.Grid,
             IsLocked = true,
             Bounds = new BoundsConfig

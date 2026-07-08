@@ -17,6 +17,7 @@ public sealed class BoardStore
 
     public BoardStore()
     {
+        MigrateLegacyDataIfNeeded();
         Directory.CreateDirectory(AppDirectory);
         _saveTimer = new DispatcherTimer
         {
@@ -30,7 +31,7 @@ public sealed class BoardStore
     }
 
     public string AppDirectory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DesktopTextBoard");
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppInfo.AppDataFolder);
 
     public string DocumentPath => Path.Combine(AppDirectory, "boards.json");
 
@@ -133,5 +134,22 @@ public sealed class BoardStore
                 widget.Bounds.Height = Math.Max(120, widget.Bounds.Height);
             }
         }
+    }
+
+    private void MigrateLegacyDataIfNeeded()
+    {
+        var legacyDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            AppInfo.LegacyAppDataFolder);
+        var legacyDocumentPath = Path.Combine(legacyDirectory, "boards.json");
+
+        if (File.Exists(DocumentPath)
+            || !File.Exists(legacyDocumentPath))
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(AppDirectory);
+        File.Copy(legacyDocumentPath, DocumentPath, overwrite: false);
     }
 }

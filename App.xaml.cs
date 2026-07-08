@@ -32,6 +32,8 @@ public partial class App : System.Windows.Application
             toggleStartup: ToggleStartup,
             exit: ExitApplication,
             isStartupEnabled: StartupService.IsEnabled);
+
+        OpenEditor();
     }
 
     private void ToggleEditor()
@@ -44,6 +46,16 @@ public partial class App : System.Windows.Application
         if (_editorWindow.IsVisible)
         {
             _editorWindow.Hide();
+            return;
+        }
+
+        OpenEditor();
+    }
+
+    private void OpenEditor()
+    {
+        if (_editorWindow is null)
+        {
             return;
         }
 
@@ -60,8 +72,8 @@ public partial class App : System.Windows.Application
 
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Filter = "Desktop Text Board backup (*.json)|*.json|All files (*.*)|*.*",
-            Title = "Import Desktop Text Board backup"
+            Filter = $"{AppInfo.ShortName} backup (*.json)|*.json|All files (*.*)|*.*",
+            Title = $"Import {AppInfo.DisplayName} backup"
         };
 
         if (dialog.ShowDialog() != true)
@@ -82,9 +94,9 @@ public partial class App : System.Windows.Application
 
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
-            Filter = "Desktop Text Board backup (*.json)|*.json",
-            FileName = $"desktop-text-board-{DateTime.Now:yyyyMMdd-HHmm}.json",
-            Title = "Export Desktop Text Board backup"
+            Filter = $"{AppInfo.ShortName} backup (*.json)|*.json",
+            FileName = $"akasha-notes-{DateTime.Now:yyyyMMdd-HHmm}.json",
+            Title = $"Export {AppInfo.DisplayName} backup"
         };
 
         if (dialog.ShowDialog() == true)

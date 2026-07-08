@@ -1,4 +1,4 @@
-# Desktop Text Board Design
+# 阿卡夏便笺 Akasha Notes Design
 
 ## 1. Product Goal
 
@@ -289,7 +289,7 @@ Proposed components:
       "widgets": [
         {
           "id": "widget-1",
-          "name": "Desktop Board",
+          "name": "阿卡夏便笺",
           "mode": "grid",
           "isLocked": true,
           "monitorId": "primary",

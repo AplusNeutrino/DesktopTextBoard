@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 namespace DesktopTextBoard.Services;
@@ -39,8 +40,8 @@ public sealed class TrayService : IDisposable
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
-            Text = "Desktop Text Board",
+            Icon = LoadAppIcon(),
+            Text = AppInfo.DisplayName,
             Visible = true,
             ContextMenuStrip = menu
         };
@@ -63,5 +64,18 @@ public sealed class TrayService : IDisposable
     {
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
+    }
+
+    private static Icon LoadAppIcon()
+    {
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AkashaNotes.ico");
+        if (File.Exists(iconPath))
+        {
+            return new Icon(iconPath);
+        }
+
+        return !string.IsNullOrWhiteSpace(Environment.ProcessPath)
+            ? Icon.ExtractAssociatedIcon(Environment.ProcessPath) ?? SystemIcons.Application
+            : SystemIcons.Application;
     }
 }

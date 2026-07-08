@@ -1,10 +1,10 @@
-# Desktop Text Board 功能指南
+# 阿卡夏便笺 Akasha Notes 功能指南
 
-本文档面向 Desktop Text Board 的日常使用者，说明如何启动、编辑、锁定、调整桌面透明文字小组件，以及如何使用网格、合并单元格和分割线等功能。
+本文档面向阿卡夏便笺 Akasha Notes 的日常使用者，说明如何启动、编辑、锁定、调整桌面透明文字小组件，以及如何使用网格、合并单元格和分割线等功能。
 
 ## 1. 软件定位
 
-Desktop Text Board 是一个 Windows 桌面透明文字板工具。它由两部分组成：
+阿卡夏便笺 Akasha Notes 是一个 Windows 桌面透明文字板工具。它由两部分组成：
 
 - 桌面小组件：显示在桌面上的透明文字框，只负责展示内容。
 - 编辑器窗口：用于编辑文字、设置样式、调整网格和外观。
@@ -16,7 +16,7 @@ Desktop Text Board 是一个 Windows 桌面透明文字板工具。它由两部�
 从 Release 包中解压后，运行：
 
 ```text
-DesktopTextBoard.exe
+AkashaNotes.exe
 ```
 
 启动后，程序会常驻系统托盘。可以通过托盘图标打开编辑器。
@@ -206,7 +206,7 @@ DesktopTextBoard.exe
 数据会自动保存到：
 
 ```text
-%LOCALAPPDATA%\DesktopTextBoard\boards.json
+%LOCALAPPDATA%\AkashaNotes\boards.json
 ```
 
 建议使用托盘菜单中的导入/导出功能做备份，不建议手动编辑 JSON 文件。
@@ -225,13 +225,13 @@ DesktopTextBoard.exe
 当前已发布版本：
 
 ```text
-v0.1.1
+v0.1.2
 ```
 
 发布包：
 
 ```text
-DesktopTextBoard-v0.1.1-win-x64.zip
+AkashaNotes-v0.1.2-win-x64.zip
 ```
 
 该版本包含：
